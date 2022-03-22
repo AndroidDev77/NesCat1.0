@@ -397,6 +397,7 @@ class SdFs : public SdBase<FsVolume> {
 /** Select type for SdFat. */
 typedef SdFat32 SdFat;
 /** Select type for File. */
+
 typedef File32 File;
 /** Select type for SdBaseFile. */
 typedef FatFile SdBaseFile;

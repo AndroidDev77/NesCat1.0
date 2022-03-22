@@ -56,12 +56,12 @@
 
 #define LCD_ENABLED true
 #define COMPOSITE_VIDEO_ENABLED true  //Do not disable! it also disable ADC.
-#define KEYBOARD_ENABLED true
+#define KEYBOARD_ENABLED false
 #define SOUND_ENABLED true
 #define BLUETOOTH_ENABLED true //experimental.
 
 #define DEBUG true       //Serial debugging enable.
-#define DEBUGEXTRA false //Extra Serial debugging enable.
+#define DEBUGEXTRA true //Extra Serial debugging enable.
 
 //********************************************************************************
 
@@ -106,7 +106,7 @@
 #define ADC_CHANNEL   ADC1_CHANNEL_6 // GPIO34
 
 // player Digital I/O used
-#define SD_CS          -1
+#define SD_CS         SD_CS_PIN
 #define SPI_MOSI      SOFTSD_MOSI_PIN
 #define SPI_MISO      SOFTSD_MISO_PIN
 #define SPI_SCK       SOFTSD_SCK_PIN
@@ -144,12 +144,10 @@
 #include "SPI.h"
 //AUDIO_i2S:
 
-//M5Stack 
-#include <M5Core2.h>
 
 #ifdef BLUETOOTH_ENABLED
-//Bluetooth_PS4_DualShock_support_for_ESP32:
-#include "src/hid_server/hid_server.h"
+// PS4
+#include <PS4Controller.h>
 #endif
 
 //********************************************************************************
@@ -177,6 +175,8 @@
 ///#include "arduinoFFT.h" // Standard Arduino FFT library
 #include "src/arduinoFFT/src/arduinoFFT.h" // Standard Arduino FFT library
 
+
+
 //********************************************************************************
 #else
 //********************************************************************************
@@ -199,7 +199,8 @@
 //********************************************************************************
 #endif
 
-
+//M5Stack 
+//#include <M5Core2.h>
 
 // https://github.com/kosme/arduinoFFT, in IDE, Sketch, Include Library, Manage Library, then search for FFT
 arduinoFFT FFT = arduinoFFT();
@@ -211,8 +212,8 @@ arduinoFFT FFT = arduinoFFT();
 ///SdFatSoftSpi<SOFTSD_MISO_PIN, SOFTSD_MOSI_PIN, SOFTSD_SCK_PIN> SD;
 SoftSpiDriver<SOFTSD_MISO_PIN, SOFTSD_MOSI_PIN, SOFTSD_SCK_PIN> softSpi;
 #define SD_CONFIG SdSpiConfig(-1, DEDICATED_SPI, SD_SCK_MHZ(0), &softSpi)
-SdFat32 SD32;
-File32 fp;
+SdFat SD;
+File fp;
 
 //LCD_ST7789
 #define ILI9342_DRIVER     // Configure all registers
@@ -430,117 +431,120 @@ int num_get = 0;
 IRAM_ATTR static void PS4_JOY() {
 #ifdef BLUETOOTH_ENABLED
 
-  // update the bluetooth edr/hid stack
-  ///hid_update();
-
-  //read data from JoyStick
-  num_get = hid_get(buf, sizeof(buf) - 1); // called from emulation loop
 //********************************************************************************
 
-  if ((num_get != -1) && buf[0] == 161) { // If connected then read JoyStick
+  if (PS4.isConnected()) { // If connected then read JoyStick
 
-    uint8_t JOYBUTTON = buf[6];
-    uint8_t JOYBUTTON2 = buf[7];
+
     ///Serial.println(JOYBUTTON);
 
-    if ( JOYBUTTON % 8 == 0) {
-      JOY_UP = 1;
-    }
-    else if ( JOYBUTTON % 8 == 1) {
+    if ( PS4.UpRight()) {
       JOY_UP = 1;
       JOY_RIGHT = 1;
       JOY_DOWN = 0;
       JOY_LEFT = 0;
     }
-    else if ( JOYBUTTON % 8 == 2) {
-      JOY_RIGHT = 1;
-      JOY_DOWN = 0;
-      JOY_LEFT = 0;
-      JOY_UP = 0;
-    }
-    else if ( JOYBUTTON % 8 == 3) {
+    else if ( PS4.DownRight()) {
       JOY_RIGHT = 1;
       JOY_DOWN = 1;
       JOY_LEFT = 0;
       JOY_UP = 0;
     }
-    else if ( JOYBUTTON % 8 == 4) {
-      JOY_DOWN = 1;
-      JOY_LEFT = 0;
-      JOY_RIGHT = 0;
-      JOY_UP = 0;
-    }
-    else if ( JOYBUTTON % 8 == 5) {
+    else if ( PS4.DownLeft()) {
       JOY_DOWN = 1;
       JOY_LEFT = 1;
       JOY_RIGHT = 0;
       JOY_UP = 0;
     }
-    else if ( JOYBUTTON % 8 == 6) {
-      JOY_LEFT = 1;
-      JOY_UP = 0;
-      JOY_DOWN = 0;
-      JOY_RIGHT = 0;
-    }
-    else if ( JOYBUTTON % 8 == 7) {
+    else if ( PS4.UpLeft()) {
       JOY_LEFT = 1;
       JOY_UP = 1;
       JOY_DOWN = 0;
       JOY_RIGHT = 0;
     }
-    if (((JOYBUTTON >> 3) & 1) != 0) {
+    else if ( PS4.Left()) {
+      JOY_LEFT = 1;
+      JOY_UP = 0;
+      JOY_DOWN = 0;
+      JOY_RIGHT = 0;
+    }
+    else if ( PS4.Down()) {
+      JOY_DOWN = 1;
+      JOY_LEFT = 0;
+      JOY_RIGHT = 0;
+      JOY_UP = 0;
+    }
+    else if ( PS4.Right()) {
+      JOY_RIGHT = 1;
+      JOY_DOWN = 0;
+      JOY_LEFT = 0;
+      JOY_UP = 0;
+    }
+    else if ( PS4.Up()) {
+      JOY_RIGHT = 0;
+      JOY_DOWN = 0;
+      JOY_LEFT = 0;
+      JOY_UP = 1;
+    }
+    else {
       JOY_UP = 0;
       JOY_DOWN = 0;
       JOY_LEFT = 0;
       JOY_RIGHT = 0;
     }
 
-    if ( JOYBUTTON > 8 && ((JOYBUTTON >> 4) & 1) != 0) {
+    if ( PS4.Square()) {
       JOY_SQUARE = 1;
     }
-    else if (((JOYBUTTON >> 4) & 1) == 0) {
+    else {
       JOY_SQUARE = 0;
     }
-    if ( JOYBUTTON > 8 && ((JOYBUTTON >> 4) & 2) != 0) {
+
+    if ( PS4.Cross()) {
       JOY_CROSS = 1;
     }
-    else if (((JOYBUTTON >> 4) & 2) == 0) {
+    else {
       JOY_CROSS = 0;
     }
-    if ( JOYBUTTON > 8 && ((JOYBUTTON >> 4) & 4) != 0) {
+    if ( PS4.Circle()) {
       JOY_CIRCLE = 1;
     }
-    else if (((JOYBUTTON >> 4) & 4) == 0) {
+    else {
       JOY_CIRCLE = 0;
     }
-    if ( JOYBUTTON > 8 && ((JOYBUTTON >> 4) & 8) != 0) {
+    if ( PS4.Triangle()) {
       JOY_TRIANGLE = 1;
     }
-    else if (((JOYBUTTON >> 8) & 1) == 0) {
+    else {
       JOY_TRIANGLE = 0;
     }
 
-    if (JOYBUTTON2 == 0) {
-      JOY_SHARE = 0;
-      JOY_OPTIONS = 0;
-    }
-    if ( JOYBUTTON2 > 8 && ((JOYBUTTON2 >> 4) & 1) != 0) {
+    if ( PS4.Share()) {
       JOY_SHARE = 1;
     }
-    if ( JOYBUTTON2 > 8 && ((JOYBUTTON2 >> 4) & 2) != 0) {
+    else{
+      JOY_SHARE = 0;
+    }
+
+    if ( PS4.Options()) {
       JOY_OPTIONS = 1;
+    }
+    else{
+      JOY_OPTIONS = 0;
     }
   }
   if (DEBUGEXTRA) {
-    if (JOY_UP) Serial.print("UP.");
-    if (JOY_DOWN) Serial.print("DOWN.");
-    if (JOY_LEFT) Serial.print("LEFT.");
-    if (JOY_RIGHT) Serial.print("RIGHT.");
-    if (JOY_SHARE) Serial.print("START.");
-    if (JOY_OPTIONS) Serial.print("SELECT.");
-    if (JOY_CROSS) Serial.print("A.");
-    if (JOY_SQUARE) Serial.print("B.");
-    Serial.println();
+    if (JOY_UP) Serial.println("UP.");
+    if (JOY_DOWN) Serial.println("DOWN.");
+    if (JOY_LEFT) Serial.println("LEFT.");
+    if (JOY_RIGHT) Serial.println("RIGHT.");
+    if (JOY_SHARE) Serial.println("SAHRE.");
+    if (JOY_OPTIONS) Serial.println("OPTION.");
+    if (JOY_CROSS) Serial.println("X.");
+    if (JOY_SQUARE) Serial.println("[].");
+    if (JOY_TRIANGLE) Serial.println("V.");
+    if (JOY_CIRCLE) Serial.println("O.");
+    //Serial.println();
   }
 
 #endif
@@ -783,11 +787,10 @@ uint8_t MENU() {
   }
   //--------------------------------------------------------------------------------
   while (1) {
-    hid_update();
     PS4_JOY();
-    M5.update();
 
-    if (digitalRead(PIN_LEFT) == 1) {
+
+    /*if (digitalRead(PIN_LEFT) == 1) {
       JOY_LEFT = 1;   //LEFT
       delay(25);
     }
@@ -802,20 +805,8 @@ uint8_t MENU() {
     if (digitalRead(PIN_A) == 1) {
       JOY_SQUARE = 1;  //A
       delay(25);
-    }
+    }*/
 
-    if(M5.BtnC.isPressed()){
-      JOY_SHARE = 1;
-      delay(25);
-    }
-    if(M5.BtnA.isPressed()){
-      JOY_LEFT = 1;
-      delay(25);
-    }
-    if(M5.BtnB.isPressed()){
-      JOY_RIGHT = 1;
-      delay(25);
-    }
     //--------------------------------------------------------------------------------
     if (JOY_RIGHT == 1)  {
       //for (int16_t animate = 0; animate < 240; animate += 4) {
@@ -1055,17 +1046,6 @@ Audio audio;
 
 #include "oscilloscope.h"
 
-
-
-
-
-
-
-
-
-
-
-
 //********************************************************************************
 
 
@@ -1126,7 +1106,7 @@ char* PATH;
 char loadmessage[64];
 unsigned char *getromdata(char* ROMFILENAME_)
 {
-   fp = SD32.open(ROMFILENAME_);
+   fp = SD.open(ROMFILENAME_);
    if (DEBUG) Serial.print("FILE SIZE: ");
    if (DEBUG) Serial.println(fp.size());
    FILE_ROM_SIZE = fp.size();
@@ -1201,7 +1181,6 @@ unsigned char *getromdata(char* ROMFILENAME_)
 //********************************************************************************
 void setup() {
    Serial.begin(115200);
-   M5.begin(false, false, false, false);
    MEMORY_STATUS();
 
    if (ESP.getPsramSize() > 0) {
@@ -1228,7 +1207,7 @@ void setup() {
    }
 //--------------------------------------------------------------------------------
    //Buttons Pins Input Init
-   pinMode(PIN_A, INPUT);    //A
+   /*pinMode(PIN_A, INPUT);    //A
    pinMode(PIN_B, INPUT);   //B
    pinMode(PIN_SELECT, INPUT);   //SELECT
    pinMode(PIN_START, INPUT);   //START
@@ -1236,6 +1215,7 @@ void setup() {
    pinMode(PIN_DOWN, INPUT);   //DOWN  //TCK
    pinMode(PIN_LEFT, INPUT);       //LEFT
    pinMode(PIN_RIGHT, INPUT_PULLDOWN);  //RIGHT
+   */
 //--------------------------------------------------------------------------------
 #if LCD_ENABLED
    // if the display has CS pin try with SPI_MODE0
@@ -1250,11 +1230,9 @@ void setup() {
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
 // BLUETOOTH PS4 DUALSHOCK SUPPORT
-#ifdef BLUETOOTH_ENABLED
-  hid_init("ds4_esp32");
-#endif
-//--------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------
+PS4.begin("84:1b:77:71:0A:CE");
 delay(3000);  // Wait a long time for esp32 to have Serial print statements work right.
 
 //--------------------------------------------------------------------------------
@@ -1285,7 +1263,7 @@ delay(3000);  // Wait a long time for esp32 to have Serial print statements work
    MAINPATH = (char*)malloc(256);
 //--------------------------------------------------------------------------------
    ///microSD CARD INIT
-   if (!SD32.begin(SD_CONFIG)) {
+   if (!SD.begin(SD_CONFIG)) {
       Serial.println("SD error!");
    } else Serial.println("SD OK.");
 //--------------------------------------------------------------------------------
@@ -1440,9 +1418,8 @@ inscart_success:
 
         nes_renderframe(true);
         #ifdef BLUETOOTH_ENABLED
-              hid_update();
               PS4_JOY();
-          #endif      
+        #endif      
 
         tickcnt = millis() - tickcnt; 
         if (tickcnt>0 && tickcnt < 16) vTaskDelay(16-tickcnt); //delay before next frame          
@@ -1488,7 +1465,7 @@ inscart_success:
         Serial.println(TOTALFILES);
         Serial.println(MAINPATH);
 
-        audio.connecttoFS(SD32, MAINPATH);
+        audio.connecttoFS(SD, MAINPATH);
 
         screenmemory_fillscreen(63); //black color
         set_font_XY(16, 12 );
@@ -1570,7 +1547,7 @@ inscart_success:
             }   
 
             audio.stopSong();
-            audio.connecttoFS(SD32, MAINPATH);
+            audio.connecttoFS(SD, MAINPATH);
             screenmemory_fillscreen(63); //black color
             set_font_XY(16, 12 );
             sprintf(textbuf, "%d/%d", PLAYINGFILE + 1, TOTALFILES);
@@ -1597,7 +1574,7 @@ inscart_success:
             }
             
             audio.stopSong();
-            audio.connecttoFS(SD32, MAINPATH);
+            audio.connecttoFS(SD, MAINPATH);
             screenmemory_fillscreen(63); //black color
             set_font_XY(16, 12 );
             sprintf(textbuf, "%d/%d", PLAYINGFILE + 1, TOTALFILES);
@@ -1627,7 +1604,7 @@ inscart_success:
             }
 
             audio.stopSong();
-            audio.connecttoFS(SD32, MAINPATH);
+            audio.connecttoFS(SD, MAINPATH);
             delay(200);
             screenmemory_fillscreen(63); //black color
             set_font_XY(16, 12 );

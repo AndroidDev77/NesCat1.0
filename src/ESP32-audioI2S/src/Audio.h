@@ -217,7 +217,7 @@ public:
 
 
 
-    File              audiofile;    // @suppress("Abstract class cannot be instantiated")
+    File32              audiofile;    // @suppress("Abstract class cannot be instantiated")
     WiFiClient        client;       // @suppress("Abstract class cannot be instantiated")
     WiFiClientSecure  clientsecure; // @suppress("Abstract class cannot be instantiated")
     i2s_config_t      m_i2s_config; // stores values for I2S driver
