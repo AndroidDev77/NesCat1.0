@@ -36,4 +36,5 @@
 # Folders
 \.pio
 \.vscode
+\build
 
