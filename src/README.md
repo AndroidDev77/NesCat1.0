@@ -11,3 +11,7 @@ SCHEMATIC:
 <img src="https://user-images.githubusercontent.com/52428568/150863759-3df26a86-aade-4640-be4d-20b66a3612ad.png" width="40%" height="40%">
 <img src="https://user-images.githubusercontent.com/52428568/150863845-e1bf7aeb-ef39-42b4-a34f-76f2a1b48ae2.png" width="40%" height="40%">
 <img src="https://user-images.githubusercontent.com/52428568/150863936-93afac6d-d982-4868-ad80-450e77f94aab.png" width="40%" height="40%">
+
+# NesCat1.0 M5Core2
+I reworked the code to work for the M5Core2, includes audio, PS4 Bluetooth remote, SD Card support.
+Runs pretty slow for now. Will fix later
