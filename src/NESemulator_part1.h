@@ -10,18 +10,20 @@
 
 //================================================================================
 //AUDIO_SETUP
-#define DEFAULT_SAMPLERATE 24000
-#define DEFAULT_FRAGSIZE 60 //max.256, default 240
+#define DEFAULT_SAMPLERATE 44100
+#define DEFAULT_FRAGSIZE 256 //max.256, default 240
+#define DEFAULT_CHUNKS 4
+#define DEFAULT_BUFF_COUNT 6
 
 //VIDEO_SETUP
 // Visible (NTSC) screen height
 #ifndef NES_VISIBLE_HEIGHT
 #define  NES_VISIBLE_HEIGHT   240
 #endif // !NES_VISIBLE_HEIGHT 
-#define  NES_SCREEN_WIDTH     256
-#define  NES_SCREEN_HEIGHT    240
 
-#define PAL
+#define SCREEN_WIDTH          320
+#define SCREEN_HEIGHT         240
+//#define PAL
 
 // NTSC = 60Hz, PAL = 50Hz
 #ifdef PAL
@@ -84,14 +86,6 @@ uint8_t get_pad0(void) {
   if (JOY_LEFT == 1) value |= 64; //LEFT
   if (JOY_RIGHT == 1) value |= 128; //RIGHT
 
-  ///  if (JOY_CIRCLE==1) Serial.println("JOY_CIRCLE");
-  ///  if (JOY_TRIANGLE==1) Serial.println("JOY_TRIANGLE");
-
-  // mask out left/right simultaneous keypresses
-  ///  if ((value & JOY_UP) && (value & JOY_DOWN)) value &= ~(JOY_UP | JOY_DOWN);
-  ///  if ((value & JOY_LEFT) && (value & JOY_RIGHT)) value &= ~(JOY_LEFT | JOY_RIGHT);
-  // return (0x40 | value) due to bus conflicts
-  ///return (0x40 | ((value >> pad0_readcount++) & 1));
   return (((value >> pad0_readcount++) & 1));
 }
 //********************************************************************************
@@ -144,7 +138,7 @@ i2s_config_t audio_cfg = {
   .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1  /*| ESP_INTR_FLAG_IRAM  | ESP_INTR_FLAG_SHARED*/,
   .dma_buf_count = 6,
   // .dma_buf_len = 2 * DEFAULT_FRAGSIZE,
-  .dma_buf_len = 4 * DEFAULT_FRAGSIZE,
+  .dma_buf_len = DEFAULT_CHUNKS * DEFAULT_FRAGSIZE,
   .use_apll = false
 };
 #endif
@@ -199,13 +193,11 @@ uint16_t audio_frame[2 * DEFAULT_FRAGSIZE];
 
 void do_audio_frame()
 {
-  ///printf("do_audio_frame\n");
-
 #if SOUND_ENABLED
-  int left = DEFAULT_SAMPLERATE / NES_REFRESH_RATE;
+  int left = DEFAULT_SAMPLERATE / NES_REFRESH_RATE; //735
   while (left)
   {
-    int n = DEFAULT_FRAGSIZE;
+    int n = DEFAULT_FRAGSIZE; //256
     if (n > left)
       n = left;
     audio_callback(audio_frame, n); //get more data
@@ -218,15 +210,13 @@ void do_audio_frame()
       ///      uint16_t a = (audio_frame[i] >> 3); //VEEERY BAD!
       uint16_t a = (audio_frame[i] >> 0);
       audio_frame[i * 2 + 1] = 0x8000 + a;
-      audio_frame[i * 2] = 0x8000 - a;
-
-      ///Serial.print(audio_frame[i]);
+      audio_frame[i * 2] = 0x8000 - a;     
     }
     size_t i2s_bytes_write;
     // i2s_write(I2S_NUM_0, (const char *)audio_frame, 2 * n, &i2s_bytes_write, portMAX_DELAY);
     // left -= i2s_bytes_write / 2;
-    i2s_write(I2S_NUM_0, (const char *)audio_frame, 4 * n, &i2s_bytes_write, portMAX_DELAY);
-    left -= i2s_bytes_write / 4;
+    i2s_write(I2S_NUM_0, (const char *)audio_frame, DEFAULT_CHUNKS * n, &i2s_bytes_write, portMAX_DELAY);
+    left -= i2s_bytes_write / DEFAULT_CHUNKS;
   }
 
 #endif
@@ -238,8 +228,10 @@ void do_audio_frame()
 volatile int time_ticks = 0;
 IRAM_ATTR static void timer_isr(void)
 {
-  if (SOUND_ENABLED)
-    if (audio_callback && NES_POWER == 1) do_audio_frame();
+  if (SOUND_ENABLED){
+    if (audio_callback && NES_POWER == 1) 
+      do_audio_frame();
+  }
   time_ticks++;
 }
 IRAM_ATTR static void timer_isr_end(void) {}
@@ -333,10 +325,10 @@ char* NESEXPLORE(char* PATH) {
 
 
 
-#if BLUETOOTH_ENABLED
-    ///      hid_update();
-          PS4_JOY();
-#endif
+    #if BLUETOOTH_ENABLED
+        ///hid_update();
+        PS4_JOY();
+    #endif
     PAGE = CURSOR / FILESPERPAGE;
     if (!NamesDisplayed) {
       screenmemory_fillscreen(63); //black color

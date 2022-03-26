@@ -55,7 +55,7 @@
 #define INCLUDED_LIBRARIES false //better enable this feature!                           
 
 #define LCD_ENABLED true
-#define COMPOSITE_VIDEO_ENABLED false  //Do not disable! it also disable ADC.
+#define COMPOSITE_VIDEO_ENABLED false  
 #define KEYBOARD_ENABLED false
 #define SOUND_ENABLED true
 #define BLUETOOTH_ENABLED true //experimental.
@@ -241,7 +241,7 @@ fs::File fp;
 
 //Allocated MEMORY variables:
 uint8_t* SCREENMEMORY[256 + 1];  //256*256 bytes + 256 offset
-uint16_t SCREENBUFFER[256];  //512 bytes
+uint16_t SCREENBUFFER[320];  //512 bytes
 
 uint32_t PSRAMSIZE = 0;
 uint8_t* PSRAM;
@@ -584,6 +584,7 @@ QueueHandle_t vidQueue;
 #define  NES_VISIBLE_HEIGHT   240
 #define  NES_SCREEN_WIDTH     256
 #define  NES_SCREEN_HEIGHT    240
+
 #define DEFAULT_WIDTH NES_SCREEN_WIDTH
 #define DEFAULT_HEIGHT NES_VISIBLE_HEIGHT
 //--------------------------------------------------------------------------------
@@ -725,20 +726,59 @@ void draw_string(char *c, uint8_t color = 48) {
     XPOS_CHAR += draw_string_xy(XPOS_CHAR, YPOS_CHAR, c, DisplayFontSet, color);
   }
 }
+
+//--------------------------------------------------------------------------------
+uint32_t CALC_XPOS(float XPercentage) {
+  float XPOS = (((float) TFT_WIDTH / 100) * XPercentage); //actual screen width
+  return ((uint32_t) XPOS);
+}
+//--------------------------------------------------------------------------------
+uint32_t CALC_YPOS(float YPercentage) {
+  float YPOS = (((float) TFT_HEIGHT / 100) * YPercentage); //actual screen width
+  return ((uint32_t) YPOS);
+}
+//--------------------------------------------------------------------------------
+float CALC_PX_PERCENT_XPOS(uint32_t pixels_count) {
+  float PERCENTAGE_SIZE = ((float) 100 / (float) TFT_WIDTH) * pixels_count;
+  if(DEBUG>1) printf("PERCENTAGE_SIZE: %f\n", PERCENTAGE_SIZE);
+  return ((float) PERCENTAGE_SIZE);
+}
+//--------------------------------------------------------------------------------
+float CALC_PX_PERCENT_YPOS(uint32_t pixels_count) {
+  float PERCENTAGE_SIZE = ((float) 100 / (float) TFT_HEIGHT) * pixels_count;
+  if(DEBUG>1) printf("PERCENTAGE_SIZE: %f\n", PERCENTAGE_SIZE);
+  return ((float) PERCENTAGE_SIZE);
+}
+
+//--------------------------------------------------------------------------------
+int32_t CALCX(int32_t PX) {
+  return (int32_t)((float)TFT_WIDTH/(float)NES_SCREEN_WIDTH*(float)PX);
+}
+//--------------------------------------------------------------------------------
+int32_t CALCY(int32_t PX) {
+  return (int32_t)((float)TFT_HEIGHT/(float)NES_SCREEN_HEIGHT*(float)PX);    
+}
+//--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
 static void lcd_write_frame(const uint16_t x, const uint16_t y, const uint16_t width, const uint16_t height) {
   //uint8_t n, l;
   uint16_t i, len;
-  //uint16_t w = TFT_WIDTH;
-  //uint16_t h = TFT_HEIGHT;
+  uint16_t w = TFT_WIDTH;
+  uint16_t h = TFT_HEIGHT;
   uint16_t X_ = 0;
+  uint16_t X2_ = 0;
+  float scale = 240.0/320.0;
 
   for (i = 0; i < height; i++) {
     uint16_t horizontal_offset = 8;
-    for (X_ = 8; X_ < 248; X_++) { //not 256 the 240
-      SCREENBUFFER[X_] = nes_16bit[(0x3F & ((uint8_t *)SCREENMEMORY[i])[X_])];
+    for (X_ = 10; X_ < 320; X_++) { //not 256 the 240
+      //X2_ = (uint16_t)(((float)X_ * (scale*100.0))/100.0);
+      X2_ = (uint16_t)((float)X_ * scale);
+      //Serial.println("X: " + String(X_) + " X2: " + String(X2_));
+      SCREENBUFFER[X_] = nes_16bit[(0x3F & ((uint8_t *)SCREENMEMORY[i])[X2_])];
+      
     }
-
+    
 
     ///PAL optimalisation in this case:
     tft.drawBitmap(0, i, 48, 1, (uint16_t *)(SCREENBUFFER));
@@ -746,7 +786,9 @@ static void lcd_write_frame(const uint16_t x, const uint16_t y, const uint16_t w
     tft.drawBitmap(96, i, 48, 1, (uint16_t *)(SCREENBUFFER + 96));
     tft.drawBitmap(144, i, 48, 1, (uint16_t *)(SCREENBUFFER + 144));
     tft.drawBitmap(192, i, 48, 1, (uint16_t *)(SCREENBUFFER + 192));
-    
+    tft.drawBitmap(240, i, 48, 1, (uint16_t *)(SCREENBUFFER + 240));
+    tft.drawBitmap(288, i, 32, 1, (uint16_t *)(SCREENBUFFER + 288));
+  
   }
 }
 //--------------------------------------------------------------------------------
@@ -755,12 +797,6 @@ int audiovideo_init() {
   // disable Core 0 WDT
   TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
   esp_task_wdt_delete(idle_0);
-
-  ///stop driver for mp3 player
-  ///   i2s_stop((i2s_port_t) 1);
-
-
-     //init_sound(); //START AUDIO ??? here?
 
   vidQueue = xQueueCreate( 1, sizeof( unsigned int*  ));
 
@@ -1191,7 +1227,7 @@ delay(3000);  // Wait a long time for esp32 to have Serial print statements work
 //*  LOOP:                                                                       *
 //********************************************************************************
 
-int32_t tickcnt=0;
+uint32_t tickcnt=0;
 
 void loop() {
   M5.update();
@@ -1332,6 +1368,7 @@ inscart_success:
 
         nes_renderframe(true);
         #ifdef BLUETOOTH_ENABLED
+            if(tickcnt%5 == 0)
               PS4_JOY();
         #endif      
 
